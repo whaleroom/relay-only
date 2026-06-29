@@ -56,17 +56,18 @@ export async function initP2P ({ ctx, dataDir }) {
 
   const hasDataAfterWipe = hasExistingData
 
-  if (ctx.FEED_KEY && !hasDataAfterWipe) {
-    // Data was wiped or this is a fresh start with FEED_KEY set.
-    // Bootstrap as owner (writable) — the generated key may differ from FEED_KEY,
-    // which is expected after a wipe. The new key should be updated in env vars.
-    console.log('No existing data found — bootstrapping fresh as writable owner')
+  if (ctx.FEED_KEY && process.env.FORCE_WIPE === 'true' && !hasDataAfterWipe) {
+    // FORCE_WIPE with FEED_KEY — bootstrap fresh as writable owner
+    console.log('FORCE_WIPE: bootstrapping fresh as writable owner')
     ctx.base = new Autobase(store, null, applyOpts())
-  } else if (ctx.FEED_KEY && hasDataAfterWipe) {
-    // Reopening existing feed by key
+  } else if (ctx.FEED_KEY) {
+    // Join existing network by FEED_KEY (read-only peer if no existing data,
+    // or reopen existing local data)
+    console.log(hasDataAfterWipe ? 'Reopening existing feed by key' : 'Joining network as peer by FEED_KEY')
     ctx.base = new Autobase(store, b4a.from(ctx.FEED_KEY, 'hex'), applyOpts())
   } else {
-    // No FEED_KEY — bootstrap as owner (writable)
+    // No FEED_KEY — bootstrap as owner (writable) — seed node creation
+    console.log('No FEED_KEY — bootstrapping fresh as writable owner')
     ctx.base = new Autobase(store, null, applyOpts())
   }
   await ctx.base.ready()
