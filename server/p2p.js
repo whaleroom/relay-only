@@ -10,8 +10,10 @@ import { startDiffWatcher } from './sse.js'
 import { initServerX25519 } from './key-grants.js'
 import { setBootstrapKey } from './db.js'
 
+const PRESENCE_INTERVAL_MS = 10000
+const PRESENCE_TTL_MS = 30000
+
 export async function initP2P ({ ctx, dataDir }) {
-  // FORCE_WIPE: clear ALL data and use a fresh subdirectory to avoid volume caching
   let coreDir = path.join(dataDir, 'core')
   if (process.env.FORCE_WIPE === 'true') {
     console.log('FORCE_WIPE: clearing data directory')
@@ -21,24 +23,36 @@ export async function initP2P ({ ctx, dataDir }) {
         fs.rmSync(path.join(dataDir, entry), { recursive: true, force: true })
       }
     }
-    // Use a unique subdirectory to guarantee no stale data collision
     coreDir = path.join(dataDir, 'core-' + Date.now())
   }
 
   const store = new Corestore(coreDir)
   ctx.swarm = new Hyperswarm()
   ctx.peerCount = 0
-  ctx.localPeerIds = new Set()
-  ctx.remotePeerIds = new Map() // noiseId -> Set of peerIds
+  ctx.localBrowserCount = 0
+  ctx.remotePresence = new Map() // nodeId -> { count, lastSeen }
+
   ctx.getOnlineUsers = () => {
-    const all = new Set(ctx.localPeerIds)
-    for (const ids of ctx.remotePeerIds.values()) {
-      for (const id of ids) all.add(id)
+    const now = Date.now()
+    let total = ctx.localBrowserCount
+    for (const entry of ctx.remotePresence.values()) {
+      if (now - entry.lastSeen < PRESENCE_TTL_MS) total += entry.count
     }
-    return all.size
+    return total
   }
 
-  // FORCE_WIPE: clear ALL data (old core data at /app/data/ and new at /app/data/core/)
+  ctx.pruneStalePresence = () => {
+    const now = Date.now()
+    let pruned = 0
+    for (const [nodeId, entry] of ctx.remotePresence) {
+      if (now - entry.lastSeen >= PRESENCE_TTL_MS) {
+        ctx.remotePresence.delete(nodeId)
+        pruned++
+      }
+    }
+    if (pruned > 0) console.log(`[presence] pruned ${pruned} stale node(s)`)
+  }
+
   if (process.env.FORCE_WIPE === 'true') {
     console.log('FORCE_WIPE: clearing data directory')
     if (fs.existsSync(dataDir)) {
@@ -49,7 +63,6 @@ export async function initP2P ({ ctx, dataDir }) {
     }
   }
 
-  // Check if core dir has existing hypercore data
   const dataDirExists = fs.existsSync(coreDir)
   const hasExistingData = dataDirExists &&
     fs.readdirSync(coreDir).some(f => !f.startsWith('.'))
@@ -57,32 +70,26 @@ export async function initP2P ({ ctx, dataDir }) {
   const hasDataAfterWipe = hasExistingData
 
   if (ctx.FEED_KEY && process.env.FORCE_WIPE === 'true' && !hasDataAfterWipe) {
-    // FORCE_WIPE with FEED_KEY — bootstrap fresh as writable owner
     console.log('FORCE_WIPE: bootstrapping fresh as writable owner')
     ctx.base = new Autobase(store, null, applyOpts())
   } else if (ctx.FEED_KEY) {
-    // Join existing network by FEED_KEY (read-only peer if no existing data,
-    // or reopen existing local data)
     console.log(hasDataAfterWipe ? 'Reopening existing feed by key' : 'Joining network as peer by FEED_KEY')
     ctx.base = new Autobase(store, b4a.from(ctx.FEED_KEY, 'hex'), applyOpts())
   } else {
-    // No FEED_KEY — bootstrap as owner (writable) — seed node creation
     console.log('No FEED_KEY — bootstrapping fresh as writable owner')
     ctx.base = new Autobase(store, null, applyOpts())
   }
   await ctx.base.ready()
 
   const feedKey = b4a.toString(ctx.base.key, 'hex')
-  // Store the bootstrap key so the apply function can verify writer identity
   setBootstrapKey(feedKey)
   ctx.localKey = b4a.toString(ctx.base.local.key, 'hex')
   ctx.shortKey = ctx.localKey.slice(0, 8)
+  ctx.nodeId = ctx.shortKey
   ctx.ready = true
 
-  // Initialize server X25519 keypair from the Autobase local key (for key grants)
   initServerX25519(ctx.base.local.key)
 
-  // If FEED_KEY was set but we bootstrapped fresh, verify the key matches
   if (ctx.FEED_KEY && feedKey !== ctx.FEED_KEY) {
     console.log(`WARNING: generated feed key ${feedKey} does not match FEED_KEY ${ctx.FEED_KEY}`)
     console.log('Update your FEED_KEY env var to match, or clear it to use the generated key.')
@@ -91,14 +98,31 @@ export async function initP2P ({ ctx, dataDir }) {
   console.log(`feed: ${feedKey}`)
   console.log(`p2p ready — author: @${ctx.shortKey} — writable: ${ctx.base.writable}`)
 
+  const presenceChannels = new Set()
+
+  function buildPresenceMessage () {
+    return b4a.from(JSON.stringify({
+      nodeId: ctx.nodeId,
+      count: ctx.localBrowserCount,
+      ts: Date.now()
+    }), 'utf-8')
+  }
+
+  function broadcastPresence () {
+    const msg = buildPresenceMessage()
+    for (const send of presenceChannels) {
+      try { send(msg) } catch {}
+    }
+  }
+
+  ctx.broadcastPresence = broadcastPresence
+
   ctx.swarm.on('connection', (socket, info) => {
     const noiseId = b4a.toString(info.publicKey, 'hex').slice(0, 8)
     ctx.peerCount++
-    ctx.remotePeerIds.set(noiseId, new Set())
     console.log(`+ peer ${noiseId} (total: ${ctx.peerCount})`)
     socket.on('close', () => {
       ctx.peerCount = Math.max(0, ctx.peerCount - 1)
-      ctx.remotePeerIds.delete(noiseId)
       console.log(`- peer ${noiseId} (total: ${ctx.peerCount})`)
     })
     store.replicate(socket)
@@ -115,31 +139,30 @@ export async function initP2P ({ ctx, dataDir }) {
       }
     })
 
-    // Peer ID exchange — share unique online peer IDs across nodes
-    const idsChannel = mux.createChannel({ protocol: 'whaleroom-peerids' })
-    const idsMsg = idsChannel.addMessage({
+    const presenceChannel = mux.createChannel({ protocol: 'whaleroom-presence' })
+    const presenceMsg = presenceChannel.addMessage({
       encoding: { preencode (s, m) { s.end += m.length }, encode (s, m) { s.buffer.set(m, s.start); s.start += m.length }, decode (s) { return s.buffer.subarray(s.start, s.end) } },
       onmessage (buf) {
-        const json = b4a.toString(buf, 'utf-8')
         try {
-          const ids = JSON.parse(json)
-          ctx.remotePeerIds.set(noiseId, new Set(Array.isArray(ids) ? ids : []))
+          const data = JSON.parse(b4a.toString(buf, 'utf-8'))
+          if (data.nodeId && typeof data.count === 'number') {
+            ctx.remotePresence.set(data.nodeId, { count: data.count, lastSeen: Date.now() })
+          }
         } catch {}
       }
     })
 
-    idsChannel.open()
+    presenceChannel.open()
     writerMsg.send(ctx.base.local.key)
+    presenceChannels.add(presenceMsg.send.bind(presenceMsg))
 
-    // Broadcast our local peer IDs to this peer
-    ctx.broadcastPeerIds = () => {
-      idsMsg.send(b4a.from(JSON.stringify(Array.from(ctx.localPeerIds)), 'utf-8'))
-    }
-    ctx.broadcastPeerIds()
+    try { presenceMsg.send(buildPresenceMessage()) } catch {}
 
-    // Re-broadcast every 10s to keep in sync
-    const interval = setInterval(() => ctx.broadcastPeerIds && ctx.broadcastPeerIds(), 10000)
-    socket.on('close', () => clearInterval(interval))
+    const interval = setInterval(() => broadcastPresence(), PRESENCE_INTERVAL_MS)
+    socket.on('close', () => {
+      clearInterval(interval)
+      presenceChannels.delete(presenceMsg.send.bind(presenceMsg))
+    })
   })
 
   ctx.swarm.join(ctx.base.discoveryKey)
@@ -147,6 +170,7 @@ export async function initP2P ({ ctx, dataDir }) {
     console.log(`swarm connected — peers: ${ctx.swarm.connections.size}`)
   })
 
-  // Watch for new posts — use diff stream to only emit actual changes
+  setInterval(() => ctx.pruneStalePresence(), PRESENCE_INTERVAL_MS)
+
   startDiffWatcher(ctx)
 }

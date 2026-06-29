@@ -4,10 +4,9 @@ async function handleInfo (req, res, url, ctx) {
   res.writeHead(200, { 'Content-Type': 'application/json' })
   res.end(JSON.stringify({
     feedKey: ctx.base ? b4a.toString(ctx.base.key, 'hex') : ctx.FEED_KEY,
-    // L5 fix: Don't expose full localKey — only the short author identifier
     author: ctx.shortKey,
     peers: (ctx.peerCount || (ctx.swarm ? ctx.swarm.connections.size : 0)) + 1,
-    onlineUsers: ctx.getOnlineUsers ? ctx.getOnlineUsers() : (ctx.localPeerIds ? ctx.localPeerIds.size : 0),
+    onlineUsers: ctx.getOnlineUsers ? ctx.getOnlineUsers() : 0,
     posts: ctx.ready ? ctx.base.view.version : 0,
     ready: ctx.ready,
     feeds: Object.fromEntries(
@@ -44,22 +43,21 @@ async function handleLive (req, res, url, ctx) {
   })
   res.write(':\n\n')
 
-  const peerId = url.searchParams.get('peer') || ''
-  const client = { res, peerId }
+  const client = { res }
   ctx.sseClients.add(client)
-  if (peerId) {
-    ctx.localPeerIds.add(peerId)
-    if (ctx.broadcastPeerIds) ctx.broadcastPeerIds()
-  }
+  ctx.localBrowserCount = ctx.sseClients.size
+  if (ctx.broadcastPresence) ctx.broadcastPresence()
+
+  // Heartbeat every 15s to detect zombie connections
+  const heartbeat = setInterval(() => {
+    try { res.write(':\n\n') } catch {}
+  }, 15000)
+
   req.on('close', () => {
     ctx.sseClients.delete(client)
-    if (peerId) {
-      const stillConnected = Array.from(ctx.sseClients).some(c => c.peerId === peerId)
-      if (!stillConnected) {
-        ctx.localPeerIds.delete(peerId)
-        if (ctx.broadcastPeerIds) ctx.broadcastPeerIds()
-      }
-    }
+    clearInterval(heartbeat)
+    ctx.localBrowserCount = ctx.sseClients.size
+    if (ctx.broadcastPresence) ctx.broadcastPresence()
   })
 }
 
