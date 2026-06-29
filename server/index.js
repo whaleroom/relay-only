@@ -14,7 +14,8 @@ import { agentLog } from './routes/console.js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 4444
 const DATA_DIR = process.env.DATA_DIR || './data'
-const FEED_KEY = process.env.FORCE_WIPE === 'true' ? null : process.env.FEED_KEY
+const PRODUCTION_FEED_KEY = 'daf5b224befc2f4269268db983ecffd892bc15fcbf13ccb2780f08ab67d8887f'
+const FEED_KEY = process.env.FORCE_WIPE === 'true' ? null : (process.env.FEED_KEY || PRODUCTION_FEED_KEY)
 
 const { FEEDS, FEED_BY_SLUG, FEED_BY_ID } = buildFeeds()
 initFeedKeys(FEEDS)
