@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+  <meta name="googlebot" content="noindex, nofollow">
+  <title>Whaleroom — Intelligence Terminal</title>
+  <meta name="description" content="Encrypted, peer-to-peer intelligence terminal. AI agents monitor the world's most consequential sources in real-time. Your identity never exposed.">
+  <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
+  <link rel="icon" type="image/png" href="/icons/favicon.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0a0b;
+      --surface: #141416;
+      --surface-glass: rgba(20, 20, 22, 0.6);
+      --border: #27272a;
+      --border-glow: rgba(224, 70, 191, 0.15);
+      --text: #fafafa;
+      --text-secondary: #71717a;
+      --text-dim: #52525b;
+      --accent: #e046bf;
+      --accent-light: #f08ad9;
+      --accent-hover: #af4093;
+      --accent-dim: rgba(224, 70, 191, 0.08);
+      --green: #22c55e;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 6vh 2rem 4vh;
+      overflow-y: auto;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── Animated aurora background ── */
+    .bg-aurora {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .bg-aurora::before,
+    .bg-aurora::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.5;
+    }
+
+    .bg-aurora::before {
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(224, 70, 191, 0.15), transparent 70%);
+      top: -10%;
+      left: 50%;
+      transform: translateX(-50%);
+      animation: drift1 20s ease-in-out infinite;
+    }
+
+    .bg-aurora::after {
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(175, 64, 147, 0.1), transparent 70%);
+      bottom: -10%;
+      left: 30%;
+      animation: drift2 25s ease-in-out infinite;
+    }
+
+    @keyframes drift1 {
+      0%, 100% { transform: translateX(-50%) translateY(0) scale(1); }
+      33% { transform: translateX(-40%) translateY(30px) scale(1.1); }
+      66% { transform: translateX(-60%) translateY(-20px) scale(0.95); }
+    }
+
+    @keyframes drift2 {
+      0%, 100% { transform: translateX(0) translateY(0) scale(1); }
+      50% { transform: translateX(80px) translateY(-40px) scale(1.15); }
+    }
+
+    /* ── Grid overlay ── */
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,0.012) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.012) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+      mask-image: radial-gradient(ellipse 700px 500px at 50% 50%, black 30%, transparent 80%);
+      -webkit-mask-image: radial-gradient(ellipse 700px 500px at 50% 50%, black 30%, transparent 80%);
+    }
+
+    /* ── Noise texture ── */
+    .bg-noise {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' /%3E%3C/svg%3E");
+    }
+
+    /* ── Glass card ── */
+    main {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      padding: 3rem 2.5rem;
+      max-width: 580px;
+      width: auto;
+      background: var(--surface-glass);
+      backdrop-filter: blur(20px) saturate(140%);
+      -webkit-backdrop-filter: blur(20px) saturate(140%);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      box-shadow:
+        0 0 0 1px var(--border-glow),
+        0 30px 80px -20px rgba(0, 0, 0, 0.6),
+        0 0 120px -30px rgba(224, 70, 191, 0.15);
+    }
+
+    /* ── Logo with glow ── */
+    .logo-wrap {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 0;
+    }
+
+    .logo-wrap img {
+      height: 56px;
+      width: auto;
+      animation: float 5s ease-in-out infinite;
+      filter: drop-shadow(0 0 20px rgba(224, 70, 191, 0.3));
+      transition: filter 0.3s;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    /* ── Wordmark with gradient ── */
+    h1 {
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      margin-bottom: 0.6rem;
+      line-height: 1.1;
+    }
+
+    h1 .accent {
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .tagline {
+      font-size: 1.05rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.25rem;
+      font-weight: 500;
+    }
+
+    .rebirth {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .divider {
+      width: 40px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      margin: 0 auto 2rem;
+    }
+
+    /* ── Price ticker ── */
+    .price-ticker {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      font-family: "SF Mono", "Fira Code", monospace;
+    }
+
+    .price-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.15rem;
+    }
+
+    .price-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    .price-value {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+
+    .price-value.updated {
+      animation: priceFlash 0.6s ease-out;
+    }
+
+    @keyframes priceFlash {
+      0% { color: var(--accent); }
+      100% { color: var(--text); }
+    }
+
+    .price-sep {
+      color: var(--text-dim);
+      font-size: 1.2rem;
+    }
+
+    /* ── Feature pills ── */
+    .features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      justify-content: center;
+      margin-bottom: 2rem;
+    }
+
+    .feature {
+      padding: 0.45rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      background: rgba(20, 20, 22, 0.4);
+      transition: all 0.2s ease;
+    }
+
+    .feature:hover {
+      border-color: var(--border-glow);
+      color: var(--text);
+    }
+
+    .feature strong { color: var(--text); font-weight: 600; }
+
+    /* ── Access cost hint ── */
+    .access-hint {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      text-align: center;
+      letter-spacing: 0.02em;
+      margin-top: 0.4rem;
+      margin-bottom: 2rem;
+    }
+
+    /* ── Wallet connect section ── */
+    .connect-section {
+      margin-bottom: 1.5rem;
+    }
+
+    .btn {
+      display: block; width: 100%; padding: 14px 20px; border: none;
+      border-radius: 14px; font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s ease; margin-bottom: 10px;
+      position: relative; overflow: hidden;
+    }
+
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+      color: #fff;
+      border: 1px solid var(--accent);
+    }
+
+    .btn-primary::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.12) 50%, transparent 70%);
+      transform: translateX(-100%);
+      transition: transform 0.5s ease;
+    }
+
+    .btn-primary:hover::before { transform: translateX(100%); }
+    .btn-primary:hover { opacity: 0.9; }
+
+    .btn-wallet {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-wallet:hover { border-color: var(--accent); }
+
+    .wallet-list { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
+
+    .wallet-item {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+      padding: 12px 16px; cursor: pointer; transition: border-color 0.15s;
+    }
+
+    .wallet-item:hover { border-color: var(--accent); }
+    .wallet-item img { width: 28px; height: 28px; border-radius: 6px; }
+    .wallet-item span { font-size: 14px; font-weight: 500; }
+
+    /* ── Seed field ── */
+    .seed-field {
+      display: flex; gap: 8px; margin: 16px 0;
+    }
+
+    .seed-input {
+      flex: 1; background: rgba(10, 10, 11, 0.5); border: 1px solid var(--border); border-radius: 14px;
+      padding: 12px 14px; font-family: "SF Mono", "Fira Code", monospace; font-size: 13px; color: var(--text-secondary);
+      outline: none; width: 100%; box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    .seed-input:focus { border-color: var(--accent); }
+
+    .seed-toggle {
+      flex: 0 0 auto; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 12px 14px; color: var(--text-secondary); font-size: 13px;
+      cursor: pointer; white-space: nowrap;
+    }
+
+    .seed-toggle:hover { border-color: var(--accent); color: var(--text); }
+
+    /* ── Status ── */
+    .status { color: var(--text-secondary); font-size: 13px; margin: 12px 0; }
+    .status.error { color: #ef4444; }
+    .status.success { color: var(--green); }
+
+    /* ── Footer ── */
+    .footer-divider {
+      width: 40px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 1.5rem auto;
+    }
+
+    .link { color: var(--accent); text-decoration: none; font-size: 13px; }
+    .link:hover { text-decoration: underline; }
+
+    .contracts {
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .contracts a {
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color 0.15s;
+      font-family: "SF Mono", "Fira Code", monospace;
+    }
+
+    .contracts a:hover { color: var(--accent); }
+
+    .hidden { display: none; }
+
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid #fff4; border-top-color: #fff;
+      border-radius: 50%; animation: spin 0.6s linear infinite;
+      vertical-align: middle; margin-right: 8px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Entrance animation ── */
+    main > * {
+      animation: fadeUp 0.6s ease-out backwards;
+    }
+
+    main > *:nth-child(1) { animation-delay: 0.05s; }
+    main > *:nth-child(2) { animation-delay: 0.12s; }
+    main > *:nth-child(3) { animation-delay: 0.18s; }
+    main > *:nth-child(4) { animation-delay: 0.24s; }
+    main > *:nth-child(5) { animation-delay: 0.30s; }
+    main > *:nth-child(6) { animation-delay: 0.36s; }
+    main > *:nth-child(7) { animation-delay: 0.42s; }
+    main > *:nth-child(8) { animation-delay: 0.48s; }
+    main > *:nth-child(9) { animation-delay: 0.54s; }
+    main > *:nth-child(10) { animation-delay: 0.60s; }
+    main > *:nth-child(11) { animation-delay: 0.66s; }
+    main > *:nth-child(12) { animation-delay: 0.72s; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      main { padding: 2.5rem 1.5rem; border-radius: 20px; max-width: 100%; }
+      h1 { font-size: 1.8rem; }
+      .tagline { font-size: 0.95rem; }
+      .logo-wrap img { height: 44px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .logo-wrap img, .bg-aurora::before, .bg-aurora::after { animation: none; }
+      main > * { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-aurora"></div>
+  <div class="bg-grid"></div>
+  <div class="bg-noise"></div>
+  <main>
+    <div class="logo-wrap"><img src="/icons/whaleroom-logo.svg" alt="Whaleroom"></div>
+    <p class="tagline">Encrypted intelligence terminal. Real-time signals, peer-to-peer.</p>
+    <p class="rebirth">Rebirth · 2026</p>
+    <div class="divider"></div>
+
+    <div class="price-ticker" id="price-ticker">
+      <div class="price-item">
+        <span class="price-label">WHL</span>
+        <span class="price-value" id="whl-price">—</span>
+      </div>
+      <div class="price-sep">·</div>
+      <div class="price-item">
+        <span class="price-label">ETH</span>
+        <span class="price-value" id="eth-price">—</span>
+      </div>
+    </div>
+
+    <div class="features">
+      <span class="feature"><strong>Real-time</strong> AI signals</span>
+      <span class="feature"><strong>Encrypted</strong> P2P feeds</span>
+      <span class="feature"><strong>Your identity</strong> never exposed</span>
+      <span class="feature"><strong>Token-gated</strong> access</span>
+    </div>
+
+    <p class="access-hint">Hold 280 WHL (<span id="cost-280">—</span>) or stake 170 WHL (<span id="cost-170">—</span>) to access all feeds. Not adjusted for slippage, tx and/or staking fees.</p>
+
+    <!-- Step 1: Discover wallets -->
+    <div class="connect-section" id="step-discover">
+      <button class="btn btn-primary" id="btn-discover">
+        Connect Wallet
+      </button>
+      <p class="status" id="discover-status"></p>
+    </div>
+
+    <!-- Step 2: Pick wallet (if multiple) -->
+    <div class="connect-section hidden" id="step-pick">
+      <div class="wallet-list" id="wallet-list"></div>
+      <p class="status" id="pick-status"></p>
+    </div>
+
+    <!-- Step 3: Success — show seed + open desktop -->
+    <div class="connect-section hidden" id="step-done">
+      <p class="status success">Identity derived successfully.</p>
+      <p class="status" style="margin-bottom:16px">Copy your seed below, then open the desktop app to import it.</p>
+      <div class="seed-field">
+        <input type="password" id="seed-input" readonly class="seed-input" />
+        <button class="seed-toggle" id="btn-toggle-seed">Reveal</button>
+      </div>
+      <button class="btn btn-wallet" id="btn-copy-seed">Copy Seed</button>
+      <button class="btn btn-primary" id="btn-open-desktop">Open Desktop App</button>
+    </div>
+
+    <div class="footer-divider"></div>
+    <a href="/app" class="link">Enter Whaleroom →</a>
+
+    <div class="contracts">
+      <a href="https://etherscan.io/token/0x2af72850c504ddd3c1876c66a914caee7ff8a46a" target="_blank" rel="noopener">WHL · 0x2af7…a46a</a>
+      <a href="https://etherscan.io/token/0x15e5d409001eaff5076af14cd7a4f3268f266445" target="_blank" rel="noopener">WHLC · 0x15e5…6445</a>
+    </div>
+  </main>
+
+  <script type="module" src="/js/auth.js"></script>
+  <script>
+    // ── Live price fetching ──
+    var POOL = '0x52A500AF09450AA8dEEF61f048313Cf57FCb30b6';
+    var RPCS = [
+      'https://ethereum-rpc.publicnode.com',
+      'https://eth.drpc.org',
+      'https://cloudflare-eth.com'
+    ];
+    var whlPriceEl = document.getElementById('whl-price');
+    var ethPriceEl = document.getElementById('eth-price');
+    var cost280El = document.getElementById('cost-280');
+    var cost170El = document.getElementById('cost-170');
+
+    function rpcCall(method, params) {
+      var body = JSON.stringify({ jsonrpc: '2.0', id: 1, method: method, params: params });
+      var i = 0;
+      function tryRpc() {
+        if (i >= RPCS.length) return Promise.reject(new Error('all RPCs failed'));
+        var rpc = RPCS[i++];
+        return fetch(rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body })
+          .then(function(r) { return r.json(); })
+          .then(function(res) {
+            if (res.error) throw new Error(res.error.message);
+            return res.result;
+          })
+          .catch(function(e) { return tryRpc(); });
+      }
+      return tryRpc();
+    }
+
+    function formatPrice(usd) {
+      if (usd < 0.01) return '$' + usd.toFixed(5);
+      if (usd < 1) return '$' + usd.toFixed(4);
+      if (usd < 100) return '$' + usd.toFixed(2);
+      return '$' + usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function flashUpdate(el) {
+      el.classList.remove('updated');
+      void el.offsetWidth;
+      el.classList.add('updated');
+    }
+
+    function fetchPrices() {
+      var ethPrice = null;
+      fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          ethPrice = data.ethereum.usd;
+          ethPriceEl.textContent = formatPrice(ethPrice);
+          flashUpdate(ethPriceEl);
+        })
+        .catch(function() {});
+
+      rpcCall('eth_call', [{ to: POOL, data: '0x0902f1ac' }, 'latest'])
+        .then(function(result) {
+          var reserveWHL = BigInt('0x' + result.slice(2, 66));
+          var reserveWETH = BigInt('0x' + result.slice(66, 130));
+          var whlInWeth = Number(reserveWETH) / Number(reserveWHL);
+          return whlInWeth;
+        })
+        .then(function(whlInWeth) {
+          function setWHL() {
+            if (ethPrice !== null) {
+              var whlUsd = whlInWeth * ethPrice;
+              whlPriceEl.textContent = formatPrice(whlUsd);
+              flashUpdate(whlPriceEl);
+              cost280El.textContent = formatPrice(whlUsd * 280);
+              cost170El.textContent = formatPrice(whlUsd * 170);
+            } else {
+              setTimeout(setWHL, 2000);
+            }
+          }
+          setWHL();
+        })
+        .catch(function() {});
+    }
+
+    fetchPrices();
+    setInterval(fetchPrices, 30000);
+  </script>
+</body>
+</html>

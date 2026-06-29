@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="index, follow">
+  <title>Run a Node — WhaleRoom P2P Network</title>
+  <meta name="description" content="Run a WhaleRoom relay node. Join the P2P network, replicate the Autobase log, serve API requests, and keep the network alive. No central server.">
+  <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
+  <link rel="icon" type="image/png" href="/icons/favicon.png">
+  <link rel="stylesheet" href="/css/base.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 24px; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0;
+      background: var(--header-bg, rgba(10,10,11,0.85));
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); z-index: 100;
+    }
+    .topbar .brand { display: flex; align-items: center; gap: 10px; cursor: pointer; text-decoration: none; }
+    .topbar .brand img { height: 28px; }
+    .topbar .brand span { font-size: 16px; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+    .topbar nav { display: flex; gap: 8px; }
+    .topbar nav a {
+      font-size: 13px; font-weight: 600; color: var(--text-secondary);
+      text-decoration: none; padding: 7px 14px; border: 1px solid var(--border);
+      border-radius: 10px; transition: all 0.15s;
+    }
+    .topbar nav a:hover { border-color: var(--accent); color: var(--text); }
+
+    .hero { text-align: center; padding: 80px 24px 60px; }
+    .hero .eyebrow {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.3em;
+      color: var(--accent); font-weight: 700; margin-bottom: 16px;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 6vw, 3.4rem); font-weight: 800;
+      letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 20px;
+    }
+    .hero h1 .gradient {
+      background: linear-gradient(135deg, var(--accent), #f08ad9);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero .sub { font-size: 1.15rem; color: var(--text-secondary); max-width: 560px; margin: 0 auto 32px; }
+    .hero .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-block; padding: 13px 28px; border-radius: 12px;
+      font-size: 14px; font-weight: 700; text-decoration: none;
+      letter-spacing: 0.02em; transition: all 0.2s;
+    }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), #af4093); color: #fff; border: 1px solid var(--accent); }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--accent); }
+
+    section { padding: 56px 0; }
+    section h2 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 16px; }
+    section h2 .num {
+      color: var(--accent); font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 6px; letter-spacing: 0.1em;
+    }
+    section .lead { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 28px; }
+    section p { margin-bottom: 16px; color: var(--text-secondary); }
+    section p strong { color: var(--text); font-weight: 600; }
+
+    pre {
+      background: var(--surface, #141416); border: 1px solid var(--border);
+      border-radius: 12px; padding: 18px 20px; overflow-x: auto;
+      font-family: "SF Mono", "Fira Code", "Monaco", monospace;
+      font-size: 0.82rem; line-height: 1.6; color: var(--text-secondary);
+      margin: 16px 0 24px;
+    }
+    pre .comment { color: var(--text-dim); }
+    pre .cmd { color: var(--accent); font-weight: 600; }
+
+    .env-table {
+      width: 100%; border-collapse: collapse; margin: 16px 0 24px;
+      font-size: 0.85rem;
+    }
+    .env-table th {
+      text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border);
+      font-weight: 700; color: var(--text); font-size: 0.75rem;
+      text-transform: uppercase; letter-spacing: 0.1em;
+    }
+    .env-table td {
+      padding: 10px 14px; border-bottom: 1px solid var(--border-subtle, var(--border));
+      color: var(--text-secondary);
+    }
+    .env-table td:first-child {
+      font-family: "SF Mono", "Fira Code", monospace; color: var(--accent);
+      font-size: 0.8rem; white-space: nowrap;
+    }
+    .env-table td:nth-child(2) {
+      font-family: "SF Mono", "Fira Code", monospace; font-size: 0.8rem;
+    }
+
+    .steps { display: flex; flex-direction: column; gap: 0; margin: 32px 0; }
+    .step {
+      display: flex; gap: 16px; padding: 20px 0;
+      border-left: 2px solid var(--border); padding-left: 24px;
+      margin-left: 12px; position: relative;
+    }
+    .step::before {
+      content: ''; width: 10px; height: 10px; border-radius: 50%;
+      background: var(--accent); position: absolute; left: -6px; top: 24px;
+    }
+    .step:last-child { border-left-color: transparent; }
+    .step .label {
+      font-family: "SF Mono", "Fira Code", monospace; font-size: 0.7rem;
+      text-transform: uppercase; letter-spacing: 0.15em; color: var(--accent);
+      font-weight: 700; margin-bottom: 4px;
+    }
+    .step h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .step p { font-size: 0.9rem; color: var(--text-secondary); margin: 0 0 8px; }
+
+    .callout {
+      padding: 20px 24px; border: 1px solid var(--border);
+      border-left: 3px solid var(--accent); border-radius: 12px;
+      margin: 24px 0; font-size: 0.9rem; color: var(--text-secondary);
+    }
+    .callout strong { color: var(--text); }
+
+    .footer {
+      padding: 48px 24px; text-align: center; border-top: 1px solid var(--border);
+    }
+    .footer .copyright { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 16px; }
+    .footer .links { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .footer .links a { font-size: 0.85rem; color: var(--text-secondary); text-decoration: none; }
+    .footer .links a:hover { color: var(--accent); }
+
+    @media (max-width: 600px) {
+      .hero { padding: 48px 24px 40px; }
+      .topbar nav a { padding: 6px 10px; font-size: 12px; }
+      pre { font-size: 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="brand" href="/">
+      <img src="/icons/whaleroom-logo.svg" alt="Whaleroom">
+      <span>whaleroom</span>
+    </a>
+    <nav>
+      <a href="/what-is-whaleroom">What is WhaleRoom</a>
+      <a href="/">Enter</a>
+    </nav>
+  </div>
+
+  <div class="hero">
+    <div class="eyebrow">P2P Network Participation</div>
+    <h1>Run a <span class="gradient">relay node</span>.</h1>
+    <p class="sub">WhaleRoom has no central server. Every relay node replicates the full append-only log, serves API requests to browsers, and keeps the network alive. You can run one in 5 minutes with just Node.js and an internet connection.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="/what-is-whaleroom">What is WhaleRoom?</a>
+      <a class="btn btn-ghost" href="/">Enter WhaleRoom</a>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <section>
+      <h2><span class="num">01 / Quick Start</span>Run a relay node in 5 minutes</h2>
+      <p class="lead">A relay node replicates all feeds and serves the web UI. No API keys, no AI processing. Just bandwidth and disk.</p>
+      <div class="steps">
+        <div class="step">
+          <div>
+            <div class="label">Step 1</div>
+            <h3>Clone and install</h3>
+            <p>Clone the repository and install Node.js dependencies (Node.js 20+ required).</p>
+<pre><span class="comment"># Clone the repo</span>
+<span class="cmd">git</span> clone https://github.com/whaleroom/p2p.git
+<span class="cmd">cd</span> p2p
+<span class="cmd">npm</span> install</pre>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <div class="label">Step 2</div>
+            <h3>Configure environment</h3>
+            <p>Set the feed key (from the seed node operator) and your port. Disable the bridge since this is a relay-only node.</p>
+<pre><span class="comment"># .env or shell export</span>
+<span class="cmd">export</span> FEED_KEY=<span class="comment">&lt;64-char hex from seed node&gt;</span>
+<span class="cmd">export</span> PORT=4488
+<span class="cmd">export</span> BRIDGE_ENABLED=false</pre>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <div class="label">Step 3</div>
+            <h3>Start the server</h3>
+            <p>That's it. The node connects to Hyperswarm, replicates the Autobase log, and serves the web UI.</p>
+<pre><span class="cmd">cd</span> packages/core
+<span class="cmd">node</span> server/index.js
+
+<span class="comment"># Open http://localhost:4488</span></pre>
+          </div>
+        </div>
+      </div>
+      <div class="callout">
+        <strong>That's a relay node.</strong> It replicates all posts, serves API requests, relays encrypted key grants, and keeps the network resilient. No API keys needed. No AI processing. Just bandwidth and disk.
+      </div>
+    </section>
+
+    <section>
+      <h2><span class="num">02 / Docker</span>Deploy with Docker</h2>
+      <p class="lead">The included Dockerfile bundles everything into a single container. Ideal for cloud deployment (Railway, VPS, etc.).</p>
+<pre><span class="comment"># Build the image</span>
+<span class="cmd">docker</span> build -f deploy/Dockerfile -t whaleroom .
+
+<span class="comment"># Run as relay node</span>
+<span class="cmd">docker</span> run -p 3000:3000 \
+  -e FEED_KEY=<span class="comment">&lt;key&gt;</span> \
+  -e BRIDGE_ENABLED=false \
+  whaleroom</pre>
+      <p><strong>Note:</strong> The container serves HTTP only. Deploy behind a TLS-terminating reverse proxy (Caddy, nginx, Railway's built-in HTTPS) to protect key grants, proofs, and all API traffic in transit.</p>
+    </section>
+
+    <section>
+      <h2><span class="num">03 / Environment</span>Configuration reference</h2>
+      <p class="lead">All configuration is via environment variables. No config files, no databases to manage.</p>
+
+      <h3 style="font-size:1rem;font-weight:700;margin:24px 0 12px;color:var(--text)">Server</h3>
+      <table class="env-table">
+        <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>FEED_KEY</td><td>—</td><td>64-char hex key from seed node (required to join existing network)</td></tr>
+          <tr><td>PORT</td><td>4444</td><td>HTTP server port</td></tr>
+          <tr><td>BIND_ADDR</td><td>0.0.0.0</td><td>Bind address</td></tr>
+          <tr><td>DATA_DIR</td><td>./data</td><td>Hypercore storage directory</td></tr>
+          <tr><td>BRIDGE_ENABLED</td><td>true</td><td>Set to false for relay-only mode</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="font-size:1rem;font-weight:700;margin:24px 0 12px;color:var(--text)">Token Gate (optional)</h3>
+      <table class="env-table">
+        <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>RPC_URL</td><td>cloudflare-eth,1rpc.io</td><td>Comma-separated Ethereum RPC endpoints (quorum of 2+)</td></tr>
+          <tr><td>TOKEN_GATE_ENABLED</td><td>true</td><td>Enable/disable token gate verification</td></tr>
+          <tr><td>TOKEN_MIN_BALANCE</td><td>280</td><td>Minimum WHL balance</td></tr>
+          <tr><td>TOKEN_MIN_BALANCE_2</td><td>170</td><td>Minimum WHLC balance</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2><span class="num">04 / What a relay node does</span>The mechanics of P2P participation</h2>
+      <p class="lead">When you run a relay node, you're not just hosting a server. You're joining a peer-to-peer network with specific responsibilities.</p>
+      <p><strong>Replication:</strong> Your node maintains a full copy of the Autobase append-only log. Every post, like, follow, key grant, and front page edition is replicated to your node via Hyperswarm DHT discovery. If your node goes offline, other nodes continue serving the data.</p>
+      <p><strong>API serving:</strong> Browsers connect to your node's HTTP API to fetch posts, submit new posts, search, and request key grants. You serve the web UI at your port. Multiple nodes share the load — any node can serve any user.</p>
+      <p><strong>Key grant relay:</strong> Encrypted key grants are replicated to all nodes. When a user requests feed keys, they can fetch their encrypted grant from <em>any</em> node — not just the seed node. Your relay node serves these encrypted blobs without ever holding the plaintext keys.</p>
+      <p><strong>Network resilience:</strong> More nodes = more redundancy. If the seed node goes down, relay nodes keep serving data and key grants. The network has no single point of failure.</p>
+    </section>
+
+    <section>
+      <h2><span class="num">05 / Requirements</span>What you need</h2>
+      <p class="lead">A relay node is lightweight. If you can run a web server, you can run a relay.</p>
+      <div class="callout" style="border-left-color:#22c55e">
+        <ul style="list-style:none;padding:0;margin:0">
+          <li style="padding:6px 0"><strong>Node.js 20+</strong> — the only runtime dependency</li>
+          <li style="padding:6px 0"><strong>~500MB RAM</strong> — for the Hypercore replication process</li>
+          <li style="padding:6px 0"><strong>~1GB disk</strong> — grows over time as the log accumulates</li>
+          <li style="padding:6px 0"><strong>Public IP or port forward</strong> — so peers can reach you via Hyperswarm</li>
+        </ul>
+      </div>
+      <p>That's it. No Python, no API keys, no AI models. A relay node is the simplest way to strengthen the network and help keep WhaleRoom decentralized.</p>
+    </section>
+
+  </div>
+
+  <div class="footer">
+    <div class="copyright">&copy; 2026 WhaleRoom</div>
+    <div class="links">
+      <a href="/">Enter WhaleRoom</a>
+      <a href="/what-is-whaleroom">What is WhaleRoom</a>
+      <a href="/club">WHL Club</a>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,315 @@
+/* Compose box, avatar, feed pill, char ring, post button, feed selector */
+
+.compose {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  gap: 12px;
+  background: var(--bg);
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+}
+
+.avatar-me { background: linear-gradient(135deg, #e046bf, #af4093); }
+
+.avatar-peer {
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.avatar-gen {
+  background: var(--bg);
+  border: none;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Avatar modal */
+.avatar-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  backdrop-filter: blur(4px);
+}
+
+.avatar-modal-frame { text-align: center; }
+
+.avatar-modal-svg {
+  width: 280px;
+  height: 280px;
+  border-radius: 24px;
+}
+
+.avatar-modal-id {
+  margin-top: 16px;
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.compose-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.compose textarea {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 16px;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  min-height: 48px;
+  line-height: 1.5;
+  padding: 4px 0;
+}
+
+.compose textarea::placeholder { color: var(--text-secondary); }
+
+.compose-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 10px;
+  margin-top: 6px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.compose-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.compose-feed-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.compose-feed-pill:hover { border-color: var(--text-secondary); }
+
+.compose-feed-pill .pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.char-ring { width: 24px; height: 24px; }
+.char-ring svg { transform: rotate(-90deg); width: 24px; height: 24px; }
+.char-ring circle { fill: none; stroke-width: 2.5; cx: 12; cy: 12; r: 10; }
+.char-ring .bg { stroke: var(--border); }
+.char-ring .fg { stroke: var(--accent); transition: stroke-dashoffset 0.15s; }
+.char-ring .fg.warn { stroke: #eab308; }
+.char-ring .fg.over { stroke: var(--danger); }
+
+.char-count-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: "SF Mono", "Fira Code", monospace;
+}
+.char-count-text.over { color: var(--danger); }
+
+/* ── Badge button (shared Post / Reply) ── */
+.badge-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+.badge-btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+.badge-inner {
+  background: #fafafa;
+  color: #0a0a0b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  will-change: transform;
+  gap: 0;
+  transition: gap 0.15s;
+}
+
+[data-theme="light"] .badge-inner {
+  background: #18181b;
+  color: #fafafa;
+}
+
+.badge-icon {
+  height: 16px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: width 0.15s ease-out;
+}
+
+.badge-label-box {
+  position: relative;
+  height: 18px;
+  overflow: hidden;
+  transition: width 0.15s ease-out;
+}
+
+.badge-label-measure {
+  position: absolute;
+  visibility: hidden;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.badge-label {
+  position: relative;
+  height: 100%;
+}
+
+/* Legacy fallback */
+.btn-post {
+  background: #fafafa;
+  color: #0a0a0b;
+  border: none;
+  border-radius: 99px;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  position: relative;
+}
+[data-theme="light"] .btn-post { background: #18181b; color: #fafafa; }
+
+.btn-post:hover:not(:disabled) { opacity: 0.85; }
+.btn-post:active:not(:disabled) { transform: scale(0.97); }
+.btn-post:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-post .shortcut-hint {
+  font-size: 11px;
+  opacity: 0.7;
+  font-weight: 500;
+  margin-left: 6px;
+}
+
+/* Feed selector dropdown */
+.feed-select-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 4px 24px var(--shadow-color);
+  z-index: 100;
+  min-width: 200px;
+}
+
+.feed-select-dropdown.open { display: block; }
+
+.compose-feed-static {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.feed-select-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  transition: background 0.1s;
+  border: none;
+  background: none;
+  font-family: inherit;
+  width: 100%;
+  text-align: left;
+}
+
+.feed-select-option:hover { background: var(--hover); }
+.feed-select-option.selected { background: var(--accent-dim); }
+
+/* Moderation message */
+.compose-moderation {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  margin: 8px 0 4px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.compose-moderation-icon {
+  flex-shrink: 0;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.compose-moderation-text {
+  flex: 1;
+  color: var(--text-secondary);
+}
+
+.compose-moderation-dismiss {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.compose-moderation-dismiss:hover {
+  color: var(--text);
+}

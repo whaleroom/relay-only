@@ -1,0 +1,22 @@
+{
+  "name": "@whaleroom/relay",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "WhaleRoom relay-only node — P2P replication, API serving, key grant relay. No bridge, no AI.",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "@ethereumjs/rlp": "^10.1.2",
+    "@ethereumjs/trie": "^6.2.1",
+    "autobase": "^7.28.1",
+    "b4a": "^1.8.1",
+    "corestore": "^7.10.1",
+    "dotenv": "^17.4.2",
+    "ethers": "^6.17.0",
+    "hyperbee": "^2.27.3",
+    "hyperswarm": "^4.17.0",
+    "snarkjs": "^0.7.6",
+    "tweetnacl": "^1.0.3"
+  }
+}
